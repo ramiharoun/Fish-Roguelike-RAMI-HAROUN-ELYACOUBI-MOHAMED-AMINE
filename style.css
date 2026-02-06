@@ -1,0 +1,33 @@
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+canvas {
+  display: block;
+}
+
+.ocean-slider {
+  -webkit-appearance: none;
+  background: rgba(200, 240, 255, 0.3);
+  border-radius: 10px;
+  height: 5px;
+  outline: none;
+  opacity: 0.7;
+  transition: opacity .2s;
+}
+
+.ocean-slider:hover {
+  opacity: 1;
+}
+
+.ocean-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: #caf0f8;
+  cursor: pointer;
+}
