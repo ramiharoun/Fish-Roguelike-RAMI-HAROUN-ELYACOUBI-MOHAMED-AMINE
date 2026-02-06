@@ -4,21 +4,28 @@ class Enemy extends Vehicle {
 
         this.level = level;
 
+        // Base stats
         let baseHP = 20;
         let baseSpeed = 2.0;
         let baseDamage = 5;
 
-        this.maxHP = baseHP + (level - 1) * 3;
+        // Scaling formulas with soft exponential growth
+        let levelMultiplier = 1 + (level - 1) * 0.15; // 1.0 → 2.35 at level 10
+        let powerMultiplier = Math.pow(1.1, level - 1); // 1.0 → 2.36 at level 10
+
+        this.maxHP = Math.floor(baseHP * levelMultiplier * powerMultiplier);
         this.currentHP = this.maxHP;
 
-        this.maxSpeed = baseSpeed + (level - 1) * 0.15;
-        this.maxForce = 0.1 + (level - 1) * 0.01;
+        this.maxSpeed = baseSpeed * (1 + (level - 1) * 0.08);
+        this.maxForce = 0.1 * (1 + (level - 1) * 0.05);
 
-        this.contactDamage = baseDamage + (level - 1) * 1;
+        this.contactDamage = Math.floor(baseDamage * levelMultiplier);
 
         this.r = 15;
-        this.xpValue = 5 + (level - 1) * 2;
-        this.scoreValue = 10 + (level - 1) * 5;
+
+        // Scaling rewards
+        this.xpValue = Math.floor(5 * levelMultiplier);
+        this.scoreValue = Math.floor(10 * powerMultiplier);
 
         this.xpDropType = random() < 0.8 ? 'direct' : 'orb';
 
@@ -66,6 +73,10 @@ class Enemy extends Vehicle {
         this.applyForce(pursueForce);
     }
 
+    getRoleIcon() {
+        return '•'; // Basic enemy has simple dot
+    }
+
     show() {
         push();
         translate(this.pos.x, this.pos.y);
@@ -90,6 +101,17 @@ class Enemy extends Vehicle {
             rect(-this.r, -this.r - 10, barWidth * hpPercentage, barHeight);
         }
 
+        pop();
+
+        // Draw role icon above enemy (outside rotation)
+        push();
+        translate(this.pos.x, this.pos.y);
+        textAlign(CENTER, CENTER);
+        textSize(14);
+        fill(255, 255, 255, 200);
+        strokeWeight(2);
+        stroke(0, 0, 0, 150);
+        text(this.getRoleIcon(), 0, -this.r - 25);
         pop();
     }
 }
@@ -118,6 +140,10 @@ class AggressiveFish extends Enemy {
         let pursueForce = this.pursue(player);
         pursueForce.mult(1.2);
         this.applyForce(pursueForce);
+    }
+
+    getRoleIcon() {
+        return '⚔️'; // Aggressive - sword for attack
     }
 
     show() {
@@ -178,6 +204,10 @@ class FastFish extends Enemy {
         }
     }
 
+    getRoleIcon() {
+        return '⚡'; // Fast - lightning bolt
+    }
+
     show() {
         push();
         translate(this.pos.x, this.pos.y);
@@ -225,6 +255,10 @@ class HeavyFish extends Enemy {
         this.applyForce(pursueForce);
     }
 
+    getRoleIcon() {
+        return '🛡️'; // Heavy - shield for tank
+    }
+
     show() {
         push();
         translate(this.pos.x, this.pos.y);
@@ -263,7 +297,7 @@ class Jellyfish extends Enemy {
         this.maxForce = 0.05 + (level - 1) * 0.005;
         this.r = 20;
         this.contactDamage = 3 + (level - 1) * 1;
-        this.pulseRadius = 60;
+        this.pulseRadius = 120; // Increased from 60 to 120 (+100%)
         this.pulseDamage = 1 + floor((level - 1) / 3);
         this.xpValue = 10 + (level - 1) * 2;
         this.scoreValue = 20 + (level - 1) * 6;
@@ -277,6 +311,10 @@ class Jellyfish extends Enemy {
         let wanderForce = this.wander();
         wanderForce.mult(0.7);
         this.applyForce(wanderForce);
+    }
+
+    getRoleIcon() {
+        return '🌀'; // Jellyfish - pulsing/area effect
     }
 
     damagesInRadius(player) {
@@ -350,6 +388,10 @@ class Eel extends Enemy {
             let pursueForce = this.pursue(player);
             this.applyForce(pursueForce);
         }
+    }
+
+    getRoleIcon() {
+        return '🎯'; // Eel - target/dash attack
     }
 
     show() {
@@ -450,6 +492,15 @@ class EliteFish extends Enemy {
         let angle = this.vel.heading();
         rotate(angle);
 
+        // Red aura for elite guards
+        if (this.isEliteGuard) {
+            noFill();
+            let pulseAlpha = map(sin(millis() * 0.005), -1, 1, 50, 150);
+            stroke(255, 0, 0, pulseAlpha);
+            strokeWeight(2);
+            circle(0, 0, this.r * 5);
+        }
+
         imageMode(CENTER);
         image(enemySprites['elite'], 0, 0, this.r * 3.5, this.r * 3.5);
 
@@ -480,34 +531,61 @@ class Boss extends Enemy {
     constructor(x, y, level = 1) {
         super(x, y, level);
 
-        this.maxHP = 200 + (level - 1) * 50;
+        // New exponential scaling for endgame challenge
+        let baseHP = 300;
+        let baseDamage = 25;
+        let baseSpeed = 1.8;
+
+        // Exponential multipliers for harder endgame
+        let hpMultiplier = Math.pow(1.5, level - 1);
+        let damageMultiplier = Math.pow(1.3, level - 1);
+
+        this.maxHP = baseHP * hpMultiplier;
         this.currentHP = this.maxHP;
-        this.maxSpeed = 2.5 + (level - 1) * 0.1;
+        this.contactDamage = baseDamage * damageMultiplier;
+        this.maxSpeed = baseSpeed + (level - 1) * 0.1;
         this.maxForce = 0.15 + (level - 1) * 0.01;
+
+        // Level 20 boss: massive buff
+        if (level >= 20) {
+            this.maxHP *= 2;
+            this.currentHP = this.maxHP;
+            this.contactDamage *= 1.5;
+            this.maxSpeed *= 1.2;
+        }
+
         this.r = 40;
-        this.contactDamage = 15 + (level - 1) * 2;
-        this.xpValue = 50 + (level - 1) * 10;
-        this.scoreValue = 100 + (level - 1) * 20;
+        this.xpValue = 50 + (level - 1) * 15;
+        this.scoreValue = 100 + (level - 1) * 25;
 
         this.behaviorTimer = 0;
-        this.behaviorDuration = 3000;
+        this.behaviorDuration = 2000; // Faster behavior switching
         this.currentBehavior = 'pursue';
 
         this.canShoot = true;
-        this.fireRate = 0.3 + (level - 1) * 0.03;
+        this.fireRate = 0.4 + (level - 1) * 0.04; // Increased fire rate
         this.lastShotTime = 0;
     }
 
     behave(player) {
         if (millis() - this.behaviorTimer > this.behaviorDuration) {
             this.behaviorTimer = millis();
-            this.currentBehavior = random(['pursue', 'evade', 'circle']);
+
+            let d = p5.Vector.dist(this.pos, player.pos);
+
+            // More aggressive behavior selection
+            if (d < 200) {
+                this.currentBehavior = random() < 0.7 ? 'pursue' : 'circle';
+            } else {
+                this.currentBehavior = random(['pursue', 'circle']);
+            }
         }
 
         let force;
         switch (this.currentBehavior) {
             case 'pursue':
                 force = this.pursue(player);
+                force.mult(1.8); // Much stronger pursuit
                 break;
             case 'evade':
                 force = this.evade(player);
@@ -518,6 +596,7 @@ class Boss extends Enemy {
                 offset.setMag(100);
                 let circleTarget = p5.Vector.add(player.pos, offset);
                 force = this.seek(circleTarget);
+                force.mult(1.4);
                 break;
         }
 

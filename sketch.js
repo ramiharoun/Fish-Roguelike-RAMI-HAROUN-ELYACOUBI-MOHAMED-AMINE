@@ -1,10 +1,9 @@
-let gameState;
-let camera;
-let controls;
-let ui;
-let spawner;
-let soundManager;
+// World dimensions
+let worldWidth = 3000;
+let worldHeight = 2000;
 
+// Game Core
+let gameState;
 let player;
 let enemies = [];
 let projectiles = [];
@@ -12,50 +11,63 @@ let enemyProjectiles = [];
 let loot = [];
 let particles = [];
 
-let worldWidth = 3000;
-let worldHeight = 3000;
+// Systems
+let camera;
+let controls;
+let ui;
+let spawner;
+let soundManager;
 
+// Visuals
+let bubbles = [];
+let waveOffset = 0;
+let oceanBackground;
+let obstacleManager;
+
+// Boss tracking
 let bossSpawned = false;
 let previousLevel = 1;
 let lastBossLevel = 0;
 
-let bubbles = [];
-let waveOffset = 0;
+// Boss environment effects
+let bossMode = false;
+let bossWarningTime = 0;
+let dangerParticles = [];
 
+// Assets
 let bossSprite;
-let enemySprite;
-let enemySprites = {}; // Individual enemy sprites extracted from sheet
+let playerSprite; // New procedural player sprite
+let enemySprites = {}; // Individual enemy sprites
+
 
 function preload() {
-  bossSprite = loadImage('assets/boss.png');
-  enemySprite = loadImage('assets/enemy_sprites.png');
-}
+  // Generate procedural sprites instead of loading images
+  // This bypasses the need for external assets and quota limits
+  // generateAssets() will be called in setup() because createGraphics needs p5 to be initialized
 
-// Extract individual sprites from the sprite sheet
-function extractEnemySprites() {
-  // The sprite sheet has 7 enemies in a row, each approximately 64x64 pixels
-  let spriteWidth = enemySprite.width / 7;
-  let spriteHeight = enemySprite.height;
-
-  let spriteNames = ['enemy', 'aggressive', 'fast', 'heavy', 'jellyfish', 'eel', 'elite'];
-
-  for (let i = 0; i < spriteNames.length; i++) {
-    let sprite = createGraphics(spriteWidth, spriteHeight);
-    sprite.image(enemySprite, -i * spriteWidth, 0);
-    enemySprites[spriteNames[i]] = sprite;
+  if (typeof soundManager !== 'undefined') {
+    // soundManager.preload(); 
   }
 }
+
+
+
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
 
-  // Extract individual enemy sprites from the sprite sheet
-  extractEnemySprites();
+  // Generate procedural sprites and assign to globals
+  let assets = generateAssets();
+  enemySprites = assets.enemies;
+  bossSprite = assets.boss;
+  playerSprite = assets.player;
 
   gameState = new GameState();
   camera = new Camera(worldWidth, worldHeight);
   controls = new Controls();
   ui = new UI();
+  oceanBackground = new OceanBackground(worldWidth, worldHeight);
+  obstacleManager = new ObstacleManager(worldWidth, worldHeight);
   spawner = new Spawner(worldWidth, worldHeight, camera);
   soundManager = new SoundManager();
 
@@ -82,9 +94,9 @@ function draw() {
     renderGame();
     ui.drawLevelUpScreen(player);
   } else if (gameState.isGameOver()) {
-    ui.drawGameOver(gameState);
+    ui.drawGameOver(gameState, player);
   } else if (gameState.isVictory()) {
-    ui.drawVictory(gameState);
+    ui.drawVictory(gameState, player);
   } else if (gameState.isPaused()) {
     renderGame();
     ui.drawHUD(player, gameState);
@@ -94,6 +106,7 @@ function draw() {
 
 function updateGame() {
   controls.update();
+  obstacleManager.update(player);
 
   let movementForce = controls.getMovementForce(player.maxForce);
   player.applyForce(movementForce);
@@ -113,11 +126,29 @@ function updateGame() {
 
   spawner.update(gameState, enemies, player);
 
-  if (gameState.shouldSpawnBoss() && gameState.level > lastBossLevel) {
+  if (gameState.shouldSpawnBoss(player.level) && player.level > lastBossLevel) {
+    // Clear all regular enemies for exclusive boss fight
+    enemies = enemies.filter(e => e instanceof Boss); // Keep any existing bosses
+
     spawner.spawnBoss(gameState, enemies, player);
-    lastBossLevel = gameState.level;
+    lastBossLevel = player.level;
     bossSpawned = true;
+    bossMode = true;
+    bossWarningTime = millis();
     soundManager.playBossSpawn();
+  }
+
+  // Exit boss mode when all bosses are defeated
+  if (bossMode && enemies.every(e => !(e instanceof Boss))) {
+    bossMode = false;
+  }
+
+  // HP Regeneration (1 HP per second)
+  if (millis() - player.lastRegenTime >= 1000) {
+    if (player.currentHP < player.maxHP) {
+      player.currentHP = min(player.currentHP + player.hpRegen, player.maxHP);
+    }
+    player.lastRegenTime = millis();
   }
 
   for (let i = enemies.length - 1; i >= 0; i--) {
@@ -152,7 +183,8 @@ function updateGame() {
       if (enemy instanceof Boss) {
         gameState.bossDefeated();
         bossSpawned = false;
-        if (gameState.level === 30) {
+        // Victory condition: reach level 20
+        if (player.level === 20) {
           gameState.setState(GameState.STATES.VICTORY);
           soundManager.playVictory();
         }
@@ -248,10 +280,20 @@ function updateGame() {
 }
 
 function renderGame() {
-  drawOceanBackground();
+  if (oceanBackground) {
+    oceanBackground.update(camera);
+    oceanBackground.show(camera);
+  } else {
+    background(0, 100, 200);
+  }
 
   push();
   camera.apply();
+
+  // Draw Obstacles
+  if (obstacleManager) {
+    obstacleManager.show();
+  }
 
   drawWaves();
 
@@ -286,12 +328,28 @@ function renderGame() {
   }
 
   pop();
+
+  // Boss environment effects (drawn outside camera)
+  updateBossEffects();
+  drawBossWarning();
 }
 
 function drawOceanBackground() {
+  let color1, color2;
+
+  if (bossMode) {
+    // Dark, ominous colors for boss fight
+    color1 = color(20, 10, 30); // Very dark purple
+    color2 = color(50, 20, 40); // Dark purple
+  } else {
+    // Normal ocean colors
+    color1 = color(0, 50, 100);
+    color2 = color(30, 100, 150);
+  }
+
   for (let y = 0; y < height; y++) {
     let inter = map(y, 0, height, 0, 1);
-    let c = lerpColor(color(0, 50, 100), color(30, 100, 150), inter);
+    let c = lerpColor(color1, color2, inter);
     stroke(c);
     line(0, y, width, y);
   }
@@ -345,11 +403,48 @@ function mousePressed() {
     let upgrade = ui.checkUpgradeClick(mouseX, mouseY);
     if (upgrade) {
       player.applyUpgrade(upgrade);
+      ui.resetRoulette(); // Reset animation for next time
       gameState.setState(GameState.STATES.PLAYING);
     }
   } else if (gameState.isGameOver()) {
-    if (ui.checkGameOverClick(mouseX, mouseY)) {
+    // Check restart button
+    if (mouseX > width / 2 - 100 && mouseX < width / 2 + 100 &&
+      mouseY > height / 2 + 140 && mouseY < height / 2 + 190) {
       startNewGame();
+    }
+    // Check home button
+    if (mouseX > width / 2 - 100 && mouseX < width / 2 + 100 &&
+      mouseY > height / 2 + 200 && mouseY < height / 2 + 250) {
+      gameState.reset();
+    }
+  } else if (gameState.isVictory()) {
+    // Check restart button
+    if (mouseX > width / 2 - 100 && mouseX < width / 2 + 100 &&
+      mouseY > height / 2 + 170 && mouseY < height / 2 + 220) {
+      startNewGame();
+    }
+    // Check home button
+    if (mouseX > width / 2 - 100 && mouseX < width / 2 + 100 &&
+      mouseY > height / 2 + 230 && mouseY < height / 2 + 280) {
+      gameState.reset();
+    }
+  } else if (gameState.isPlaying()) {
+    // In-game navigation icons
+    let iconSize = 40;
+    let spacing = 50;
+    let startX = width - 110;
+    let y = 20;
+
+    // Restart icon
+    if (mouseX > startX && mouseX < startX + iconSize &&
+      mouseY > y && mouseY < y + iconSize) {
+      startNewGame();
+    }
+
+    // Home icon
+    if (mouseX > startX + spacing && mouseX < startX + spacing + iconSize &&
+      mouseY > y && mouseY < y + iconSize) {
+      gameState.reset();
     }
   }
 }
@@ -366,6 +461,13 @@ function keyPressed() {
       gameState.setState(GameState.STATES.PLAYING);
     }
   }
+
+  // AOE attack (Q key)
+  if ((key === 'q' || key === 'Q') && gameState.isPlaying()) {
+    if (player && player.useAOE) {
+      player.useAOE(enemies, particles);
+    }
+  }
 }
 
 function startNewGame() {
@@ -378,8 +480,12 @@ function startNewGame() {
   loot = [];
   particles = [];
   bossSpawned = false;
-  previousLevel = 1;
+  previousLevel = player.level;
   lastBossLevel = 0;
+
+  // Reset boss mode
+  bossMode = false;
+  dangerParticles = [];
 
   for (let i = 0; i < 5; i++) {
     let x = random(worldWidth);
@@ -387,10 +493,91 @@ function startNewGame() {
     enemies.push(new Enemy(x, y, 1));
   }
 
-  camera.x = player.pos.x;
-  camera.y = player.pos.y;
 }
 
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
+}
+// Boss Environment Effects
+
+function updateBossEffects() {
+  if (!bossMode) return;
+
+  // Spawn red danger particles  
+  if (frameCount % 10 === 0) {
+    dangerParticles.push({
+      x: random(width),
+      y: 0,
+      size: random(3, 8),
+      speed: random(1, 3),
+      alpha: 255
+    });
+  }
+
+  // Update and render particles
+  for (let i = dangerParticles.length - 1; i >= 0; i--) {
+    let p = dangerParticles[i];
+    p.y += p.speed;
+    p.alpha -= 2;
+
+    if (p.alpha <= 0 || p.y > height) {
+      dangerParticles.splice(i, 1);
+    } else {
+      push();
+      noStroke();
+      fill(255, 50, 50, p.alpha);
+      circle(p.x, p.y, p.size);
+      pop();
+    }
+  }
+}
+
+function drawBossWarning() {
+  if (!bossMode) return;
+
+  let timeSinceWarning = millis() - bossWarningTime;
+
+  // Flash warning for first 3 seconds
+  if (timeSinceWarning < 3000) {
+    if (Math.floor(millis() / 500) % 2 === 0) {
+      push();
+      fill(255, 0, 0, 150);
+      textAlign(CENTER, CENTER);
+      textSize(48);
+      text('⚠️ BOSS APPROCHE ⚠️', width / 2, 100);
+      pop();
+    }
+  }
+
+  // Boss HP bar at top
+  let boss = enemies.find(e => e instanceof Boss);
+  if (boss) {
+    push();
+    fill(0, 0, 0, 180);
+    noStroke();
+    rect(0, 0, width, 60);
+
+    fill(255, 0, 0);
+    textAlign(CENTER, CENTER);
+    textSize(24);
+    text('BOSS', width / 2, 15);
+
+    // HP bar
+    let barW = width - 100;
+    let barH = 20;
+    let barX = 50;
+    let barY = 35;
+
+    stroke(255, 0, 0);
+    strokeWeight(2);
+    noFill();
+    rect(barX, barY, barW, barH);
+
+    let hpPercent = boss.currentHP / boss.maxHP;
+    fill(255, 0, 0);
+    noStroke();
+    rect(barX, barY, barW * hpPercent, barH);
+
+    pop();
+  }
 }

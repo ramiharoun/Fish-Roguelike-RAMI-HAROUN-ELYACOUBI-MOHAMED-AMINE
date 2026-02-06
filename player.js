@@ -19,6 +19,17 @@ class Player extends Vehicle {
 
         this.invulnerableTime = 0;
         this.invulnerableDuration = 1000;
+
+        // HP Regeneration
+        this.hpRegen = 1; // 1 HP per second by default
+        this.lastRegenTime = millis();
+
+        // AOE Attack properties
+        this.hasAOE = false;
+        this.aoeCooldown = 8000; // 8 seconds
+        this.lastAOETime = 0;
+        this.aoeRadius = 150;
+        this.aoeDamage = 50;
     }
 
     takeDamage(amount) {
@@ -50,7 +61,46 @@ class Player extends Vehicle {
     levelUp() {
         this.level++;
         this.xp = 0;
-        this.xpToNextLevel = Math.floor(this.xpToNextLevel * 1.5);
+
+        // New logarithmic formula: 10 + level * 8 + floor(log(level) * 15)
+        // Example: Level 1→2: 18 XP, Level 5→6: 58 XP, Level 10→11: 106 XP
+        this.xpToNextLevel = 10 + this.level * 8 + Math.floor(Math.log(this.level + 1) * 15);
+
+        // Unlock AOE at level 10
+        if (this.level === 10 && !this.hasAOE) {
+            this.hasAOE = true;
+        }
+
+        return true;
+    }
+
+    canUseAOE() {
+        return this.hasAOE && (millis() - this.lastAOETime > this.aoeCooldown);
+    }
+
+    useAOE(enemies, particles) {
+        if (!this.canUseAOE()) return false;
+
+        this.lastAOETime = millis();
+
+        // Create visual effect
+        particles.push(new AOEExplosion(this.pos.x, this.pos.y, this.aoeRadius));
+
+        // Deal damage to all enemies in radius
+        let hitCount = 0;
+        for (let enemy of enemies) {
+            let d = p5.Vector.dist(this.pos, enemy.pos);
+            if (d < this.aoeRadius) {
+                enemy.takeDamage(this.aoeDamage);
+                hitCount++;
+            }
+        }
+
+        // Play sound if available
+        if (typeof soundManager !== 'undefined' && soundManager.playAOE) {
+            soundManager.playAOE();
+        }
+
         return true;
     }
 
@@ -64,7 +114,13 @@ class Player extends Vehicle {
                 this.fireRate = min(this.fireRate + 0.5, 5.0);
                 break;
             case 'damage':
-                this.damage += 5;
+                this.damage += 8; // Increased from 5 to 8
+                break;
+            case 'speed':
+                this.maxSpeed += 0.5; // New upgrade option
+                break;
+            case 'regen':
+                this.hpRegen += 0.5; // +0.5 HP/s per upgrade
                 break;
         }
     }

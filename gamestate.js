@@ -10,7 +10,7 @@ class GameState {
 
     constructor() {
         this.currentState = GameState.STATES.MENU;
-        this.level = 1;
+        // Note: level tracking removed - using player.level for everything
         this.score = 0;
         this.enemiesKilled = 0;
         this.bossesDefeated = 0;
@@ -46,15 +46,11 @@ class GameState {
 
     startGame() {
         this.currentState = GameState.STATES.PLAYING;
-        this.level = 1;
         this.score = 0;
         this.enemiesKilled = 0;
         this.bossesDefeated = 0;
     }
 
-    nextLevel() {
-        this.level++;
-    }
 
     addScore(points) {
         this.score += points;
@@ -69,13 +65,12 @@ class GameState {
         this.enemyKilled();
     }
 
-    shouldSpawnBoss() {
-        return this.level % 5 === 0;
+    shouldSpawnBoss(playerLevel) {
+        return playerLevel % 5 === 0;
     }
 
     reset() {
         this.currentState = GameState.STATES.MENU;
-        this.level = 1;
         this.score = 0;
         this.enemiesKilled = 0;
         this.bossesDefeated = 0;

@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Sprite Loading Diagnostic</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background: #1e1e1e;
+            color: #d4d4d4;
+        }
+
+        .test-result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        .success {
+            background: #1e401e;
+            color: #4ec9b0;
+        }
+
+        .error {
+            background: #401e1e;
+            color: #f48771;
+        }
+
+        .info {
+            background: #1e2840;
+            color: #9cdcfe;
+        }
+
+        canvas {
+            border: 2px solid #333;
+            margin: 5px;
+        }
+
+        img {
+            border: 2px solid #333;
+            margin: 5px;
+            max-width: 100px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>🔍 Sprite Loading Diagnostic</h1>
+    <div id="results"></div>
+    <div id="previews">
+        <h3>Image Previews:</h3>
+    </div>
+
+    <script>
+        const results = document.getElementById('results');
+        const previews = document.getElementById('previews');
+
+        const sprites = [
+            'assets/enemy.png',
+            'assets/aggressive.png',
+            'assets/fast.png',
+            'assets/heavy.png',
+            'assets/jellyfish.png',
+            'assets/eel.png',
+            'assets/elite.png',
+            'assets/boss.png'
+        ];
+
+        function log(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `test-result ${type}`;
+            div.textContent = message;
+            results.appendChild(div);
+        }
+
+        log('Starting diagnostic tests...', 'info');
+        log(`Protocol: ${window.location.protocol}`, 'info');
+        log(`Origin: ${window.location.origin}`, 'info');
+
+        let loadedCount = 0;
+        let errorCount = 0;
+
+        sprites.forEach((path, index) => {
+            const img = new Image();
+
+            img.onload = function () {
+                loadedCount++;
+                log(`✓ ${path} - Loaded successfully (${img.width}x${img.height})`, 'success');
+
+                // Add preview
+                const preview = img.cloneNode();
+                preview.style.maxWidth = '64px';
+                preview.title = path;
+                previews.appendChild(preview);
+
+                checkComplete();
+            };
+
+            img.onerror = function (e) {
+                errorCount++;
+                log(`✗ ${path} - Failed to load`, 'error');
+                console.error('Image load error:', path, e);
+                checkComplete();
+            };
+
+            img.src = path;
+        });
+
+        function checkComplete() {
+            if (loadedCount + errorCount === sprites.length) {
+                log('', 'info');
+                log(`=== SUMMARY ===`, 'info');
+                log(`Total: ${sprites.length} | Loaded: ${loadedCount} | Failed: ${errorCount}`,
+                    loadedCount === sprites.length ? 'success' : 'error');
+
+                if (errorCount > 0) {
+                    log('', 'error');
+                    log('PROBLEM DETECTED:', 'error');
+                    if (window.location.protocol === 'file:') {
+                        log('You are running via file:// protocol which may cause CORS errors.', 'error');
+                        log('SOLUTION: Use a local HTTP server or host the files online.', 'error');
+                    } else {
+                        log('Images failed to load. Check file paths and permissions.', 'error');
+                    }
+                }
+            }
+        }
+
+        // Check for console errors
+        window.addEventListener('error', (e) => {
+            log(`Global error: ${e.message}`, 'error');
+        });
+    </script>
+</body>
+
+</html>

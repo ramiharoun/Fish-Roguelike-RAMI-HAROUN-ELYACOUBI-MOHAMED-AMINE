@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Generate Transparent Sprites</title>
+    <style>
+        body {
+            font-family: Arial;
+            padding: 20px;
+            background: #2c3e50;
+            color: white;
+        }
+
+        canvas {
+            border: 2px solid #fff;
+            margin: 10px;
+            background: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAMUlEQVQ4T2NkYGAQYcAP3uCTZhw1gGGYhAGBZIA/nYDCgBDAm9BGDWAAJyRCgLaBCAAgXwixha9cPgAAAABJRU5ErkJggg==');
+        }
+
+        .preview {
+            display: inline-block;
+            margin: 10px;
+            text-align: center;
+        }
+
+        #status {
+            background: #34495e;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>🎨 Generating Transparent Sprites...</h1>
+    <div id="status">Initializing...</div>
+    <div id="previews"></div>
+
+    <script>
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        let count = 0;
+
+        function drawFish(type) {
+            const size = type === 'boss' ? 128 : 64;
+            canvas.width = size;
+            canvas.height = size;
+            ctx.clearRect(0, 0, size, size);
+
+            const scale = size / 64;
+            ctx.save();
+            ctx.scale(scale, scale);
+
+            // Color schemes for each type
+            const colors = {
+                'enemy': { body: '#E74C3C', dark: '#C0392B', accent: '#F1948A' },
+                'aggressive': { body: '#E67E22', dark: '#D35400', accent: '#F39C12' },
+                'fast': { body: '#F1C40F', dark: '#F39C12', accent: '#FFF176' },
+                'heavy': { body: '#7F8C8D', dark: '#5D6D7E', accent: '#95A5A6' },
+                'jellyfish': { body: '#9B59B6', dark: '#8E44AD', accent: '#BB8FCE' },
+                'eel': { body: '#16A085', dark: '#138D75', accent: '#48C9B0' },
+                'elite': { body: '#3498DB', dark: '#2980B9', accent: '#5DADE2' },
+                'boss': { body: '#2C3E50', dark: '#1A252F', accent: '#566573' }
+            };
+
+            const c = colors[type];
+            const isBoss = type === 'boss';
+            const sc = isBoss ? 1.5 : 1;
+
+            // Main body
+            ctx.fillStyle = c.body;
+            ctx.beginPath();
+            ctx.ellipse(32, 32, 18 * sc, 10 * sc, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Tail
+            ctx.beginPath();
+            ctx.moveTo(14 * sc, 32);
+            ctx.lineTo(8 * sc, 27);
+            ctx.lineTo(8 * sc, 37);
+            ctx.closePath();
+            ctx.fill();
+
+            // Dorsal fin
+            ctx.fillStyle = c.dark;
+            ctx.beginPath();
+            ctx.moveTo(30, 22 * sc);
+            ctx.lineTo(28, 14 * sc);
+            ctx.lineTo(34, 18 * sc);
+            ctx.closePath();
+            ctx.fill();
+
+            // Bottom fin
+            ctx.beginPath();
+            ctx.moveTo(25, 42 * sc);
+            ctx.lineTo(23, 48 * sc);
+            ctx.lineTo(29, 44 * sc);
+            ctx.closePath();
+            ctx.fill();
+
+            // Side fins
+            ctx.fillStyle = c.accent;
+            ctx.beginPath();
+            ctx.ellipse(28, 36, 6 * sc, 3 * sc, -0.3, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.ellipse(28, 28, 6 * sc, 3 * sc, 0.3, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Eye
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(42 * sc, 30, 3.5 * sc, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = 'black';
+            ctx.beginPath();
+            ctx.arc(43 * sc, 30, 1.8 * sc, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Type-specific details
+            if (type === 'aggressive') {
+                // Sharp teeth
+                ctx.fillStyle = 'white';
+                for (let i = 0; i < 3; i++) {
+                    ctx.beginPath();
+                    ctx.moveTo(48 + i * 3, 32);
+                    ctx.lineTo(50 + i * 3, 30);
+                    ctx.lineTo(50 + i * 3, 34);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+            } else if (type === 'jellyfish') {
+                // Tentacles
+                ctx.strokeStyle = c.body;
+                ctx.lineWidth = 1.5;
+                for (let i = 0; i < 5; i++) {
+                    ctx.beginPath();
+                    ctx.moveTo(20 + i * 4, 40);
+                    ctx.quadraticCurveTo(19 + i * 4, 48, 21 + i * 4, 52);
+                    ctx.stroke();
+                }
+            } else if (type === 'elite' || type === 'boss') {
+                // Crown/spikes
+                ctx.fillStyle = '#F1C40F';
+                for (let i = 0; i < 3; i++) {
+                    ctx.beginPath();
+                    ctx.moveTo(26 + i * 4, 18);
+                    ctx.lineTo(24 + i * 4, 12);
+                    ctx.lineTo(28 + i * 4, 16);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+            }
+
+            ctx.restore();
+
+            return canvas.toDataURL('image/png');
+        }
+
+        const sprites = [
+            'enemy', 'aggressive', 'fast', 'heavy',
+            'jellyfish', 'eel', 'elite', 'boss'
+        ];
+
+        document.getElementById('status').textContent = 'Generating sprites...';
+
+        sprites.forEach((name, index) => {
+            setTimeout(() => {
+                const dataURL = drawFish(name);
+
+                // Create download link
+                const link = document.createElement('a');
+                link.download = name + '.png';
+                link.href = dataURL;
+                link.textContent = `Download ${name}.png`;
+                link.style.display = 'block';
+                link.style.margin = '5px';
+                link.style.color = '#3498db';
+
+                // Auto-click to download
+                link.click();
+
+                // Create preview
+                const preview = document.createElement('div');
+                preview.className = 'preview';
+                const img = new Image();
+                img.src = dataURL;
+                img.width = name === 'boss' ? 128 : 64;
+                preview.innerHTML = `<div><strong>${name}</strong></div>`;
+                preview.appendChild(img);
+                document.getElementById('previews').appendChild(preview);
+
+                count++;
+                document.getElementById('status').textContent =
+                    `Generated ${count}/${sprites.length} sprites. Check your Downloads folder!`;
+
+                if (count === sprites.length) {
+                    document.getElementById('status').innerHTML +=
+                        '<br><br><strong style="color: #2ecc71;">✓ All done!</strong> Move the PNG files to your assets folder.';
+                }
+            }, index * 400);
+        });
+    </script>
+</body>
+
+</html>
