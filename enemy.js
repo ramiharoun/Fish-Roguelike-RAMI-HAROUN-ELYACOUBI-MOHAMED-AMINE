@@ -73,19 +73,8 @@ class Enemy extends Vehicle {
         let angle = this.vel.heading();
         rotate(angle);
 
-        fill(255, 150, 100);
-        stroke(200, 100, 50);
-        strokeWeight(2);
-
-        ellipse(0, 0, this.r * 2, this.r * 1.3);
-
-        fill(255, 180, 130);
-        triangle(this.r, 0, this.r + 8, -5, this.r + 8, 5);
-
-        fill(255);
-        ellipse(this.r * 0.3, -this.r * 0.3, this.r * 0.4, this.r * 0.4);
-        fill(0);
-        ellipse(this.r * 0.3, -this.r * 0.3, this.r * 0.2, this.r * 0.2);
+        imageMode(CENTER);
+        image(enemySprites['enemy'], 0, 0, this.r * 3, this.r * 3);
 
         let hpPercentage = this.currentHP / this.maxHP;
         if (hpPercentage < 1) {
@@ -138,20 +127,8 @@ class AggressiveFish extends Enemy {
         let angle = this.vel.heading();
         rotate(angle);
 
-        fill(220, 50, 50);
-        stroke(180, 20, 20);
-        strokeWeight(2);
-
-        ellipse(0, 0, this.r * 2, this.r * 1.4);
-
-        fill(255, 80, 80);
-        triangle(this.r, 0, this.r + 10, -6, this.r + 10, 6);
-        triangle(-this.r * 0.2, -this.r * 0.9, 0, -this.r * 1.3, this.r * 0.2, -this.r * 0.9);
-
-        fill(255, 200, 0);
-        ellipse(this.r * 0.4, -this.r * 0.3, this.r * 0.4, this.r * 0.4);
-        fill(0);
-        ellipse(this.r * 0.4, -this.r * 0.3, this.r * 0.2, this.r * 0.2);
+        imageMode(CENTER);
+        image(enemySprites['aggressive'], 0, 0, this.r * 3, this.r * 3);
 
         let hpPercentage = this.currentHP / this.maxHP;
         if (hpPercentage < 1) {
@@ -208,18 +185,8 @@ class FastFish extends Enemy {
         let angle = this.vel.heading();
         rotate(angle);
 
-        fill(255, 200, 50);
-        stroke(230, 170, 20);
-        strokeWeight(2);
-
-        ellipse(0, 0, this.r * 2, this.r * 1.2);
-
-        fill(255, 220, 100);
-        triangle(this.r, 0, this.r + 12, -4, this.r + 12, 4);
-        triangle(-this.r * 0.3, -this.r * 0.7, -this.r * 0.1, -this.r * 1.1, 0, -this.r * 0.6);
-
-        fill(50, 50, 50);
-        ellipse(this.r * 0.4, -this.r * 0.2, this.r * 0.3, this.r * 0.3);
+        imageMode(CENTER);
+        image(enemySprites['fast'], 0, 0, this.r * 3, this.r * 3);
 
         let hpPercentage = this.currentHP / this.maxHP;
         if (hpPercentage < 1) {
@@ -265,21 +232,8 @@ class HeavyFish extends Enemy {
         let angle = this.vel.heading();
         rotate(angle);
 
-        fill(80, 80, 120);
-        stroke(50, 50, 90);
-        strokeWeight(3);
-
-        ellipse(0, 0, this.r * 2, this.r * 1.5);
-
-        fill(100, 100, 140);
-        triangle(this.r, 0, this.r + 10, -8, this.r + 10, 8);
-        ellipse(-this.r * 0.3, -this.r * 0.8, this.r * 0.5, this.r * 0.3);
-        ellipse(-this.r * 0.3, this.r * 0.8, this.r * 0.5, this.r * 0.3);
-
-        fill(255, 255, 100);
-        ellipse(this.r * 0.5, -this.r * 0.4, this.r * 0.4, this.r * 0.4);
-        fill(0);
-        ellipse(this.r * 0.5, -this.r * 0.4, this.r * 0.2, this.r * 0.2);
+        imageMode(CENTER);
+        image(enemySprites['heavy'], 0, 0, this.r * 3.5, this.r * 3.5);
 
         let hpPercentage = this.currentHP / this.maxHP;
         if (hpPercentage < 1) {
@@ -336,29 +290,8 @@ class Jellyfish extends Enemy {
 
         let pulse = sin(millis() * 0.003) * 0.2 + 1;
 
-        fill(200, 100, 200, 150);
-        stroke(180, 80, 180);
-        strokeWeight(2);
-
-        ellipse(0, 0, this.r * 2 * pulse, this.r * 2 * pulse);
-
-        noStroke();
-        fill(220, 120, 220, 100);
-        for (let i = 0; i < 8; i++) {
-            let angle = (TWO_PI / 8) * i;
-            let x = cos(angle) * this.r * 0.5;
-            let y = sin(angle) * this.r * 0.5;
-            ellipse(x, y, 5, 5);
-        }
-
-        for (let i = 0; i < 6; i++) {
-            let x = random(-this.r * 0.3, this.r * 0.3);
-            let y = this.r;
-            let len = random(10, 20);
-            stroke(200, 100, 200, 100);
-            strokeWeight(2);
-            line(x, y, x + random(-3, 3), y + len);
-        }
+        imageMode(CENTER);
+        image(enemySprites['jellyfish'], 0, 0, this.r * 3 * pulse, this.r * 3 * pulse);
 
         if (this.damagesInRadius(player)) {
             noFill();
@@ -427,24 +360,14 @@ class Eel extends Enemy {
         rotate(angle);
 
         if (this.isDashing) {
-            fill(255, 255, 100, 200);
-            stroke(255, 200, 0);
+            tint(255, 255, 100);
         } else {
-            fill(100, 150, 100);
-            stroke(70, 120, 70);
+            tint(255);
         }
-        strokeWeight(2);
 
-        ellipse(0, 0, this.r * 2.5, this.r * 1);
-        ellipse(this.r * 0.5, 0, this.r * 1.5, this.r * 0.8);
-
-        fill(120, 170, 120);
-        triangle(this.r * 1.25, 0, this.r * 1.5 + 8, -5, this.r * 1.5 + 8, 5);
-
-        fill(255, 255, 0);
-        ellipse(this.r * 0.8, -this.r * 0.3, this.r * 0.3, this.r * 0.3);
-        fill(0);
-        ellipse(this.r * 0.8, -this.r * 0.3, this.r * 0.15, this.r * 0.15);
+        imageMode(CENTER);
+        image(enemySprites['eel'], 0, 0, this.r * 4, this.r * 3);
+        noTint();
 
         let hpPercentage = this.currentHP / this.maxHP;
         if (hpPercentage < 1) {
@@ -527,21 +450,8 @@ class EliteFish extends Enemy {
         let angle = this.vel.heading();
         rotate(angle);
 
-        fill(150, 50, 150);
-        stroke(120, 30, 120);
-        strokeWeight(2);
-
-        ellipse(0, 0, this.r * 2, this.r * 1.4);
-
-        fill(170, 70, 170);
-        triangle(this.r, 0, this.r + 12, -7, this.r + 12, 7);
-        triangle(-this.r * 0.4, -this.r * 0.9, -this.r * 0.2, -this.r * 1.4, 0, -this.r * 0.8);
-        triangle(-this.r * 0.4, this.r * 0.9, -this.r * 0.2, this.r * 1.4, 0, this.r * 0.8);
-
-        fill(255, 100, 255);
-        ellipse(this.r * 0.5, -this.r * 0.3, this.r * 0.4, this.r * 0.4);
-        fill(255, 0, 0);
-        ellipse(this.r * 0.5, -this.r * 0.3, this.r * 0.2, this.r * 0.2);
+        imageMode(CENTER);
+        image(enemySprites['elite'], 0, 0, this.r * 3.5, this.r * 3.5);
 
         fill(255, 255, 0);
         textAlign(CENTER, CENTER);
@@ -639,21 +549,17 @@ class Boss extends Enemy {
         let angle = this.vel.heading();
         rotate(angle);
 
-        fill(100, 50, 150);
-        stroke(70, 30, 120);
-        strokeWeight(3);
+        // Draw boss sprite with tint based on behavior
+        if (this.currentBehavior === 'evade') {
+            tint(255, 200, 200); // Slight red tint when evading
+        } else {
+            tint(255); // Normal color
+        }
 
-        ellipse(0, 0, this.r * 2, this.r * 1.5);
+        imageMode(CENTER);
+        image(bossSprite, 0, 0, this.r * 4, this.r * 4);
 
-        fill(120, 70, 170);
-        triangle(this.r, 0, this.r + 20, -12, this.r + 20, 12);
-        triangle(-this.r * 0.5, -this.r, -this.r * 0.2, -this.r * 1.5, 0, -this.r * 0.8);
-        triangle(-this.r * 0.5, this.r, -this.r * 0.2, this.r * 1.5, 0, this.r * 0.8);
-
-        fill(255, 0, 0);
-        ellipse(this.r * 0.5, -this.r * 0.4, this.r * 0.5, this.r * 0.5);
-        fill(0);
-        ellipse(this.r * 0.5, -this.r * 0.4, this.r * 0.25, this.r * 0.25);
+        noTint();
 
         let hpPercentage = this.currentHP / this.maxHP;
         noFill();

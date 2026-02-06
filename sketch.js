@@ -22,8 +22,35 @@ let lastBossLevel = 0;
 let bubbles = [];
 let waveOffset = 0;
 
+let bossSprite;
+let enemySprite;
+let enemySprites = {}; // Individual enemy sprites extracted from sheet
+
+function preload() {
+  bossSprite = loadImage('assets/boss.png');
+  enemySprite = loadImage('assets/enemy_sprites.png');
+}
+
+// Extract individual sprites from the sprite sheet
+function extractEnemySprites() {
+  // The sprite sheet has 7 enemies in a row, each approximately 64x64 pixels
+  let spriteWidth = enemySprite.width / 7;
+  let spriteHeight = enemySprite.height;
+
+  let spriteNames = ['enemy', 'aggressive', 'fast', 'heavy', 'jellyfish', 'eel', 'elite'];
+
+  for (let i = 0; i < spriteNames.length; i++) {
+    let sprite = createGraphics(spriteWidth, spriteHeight);
+    sprite.image(enemySprite, -i * spriteWidth, 0);
+    enemySprites[spriteNames[i]] = sprite;
+  }
+}
+
 function setup() {
   createCanvas(windowWidth, windowHeight);
+
+  // Extract individual enemy sprites from the sprite sheet
+  extractEnemySprites();
 
   gameState = new GameState();
   camera = new Camera(worldWidth, worldHeight);
