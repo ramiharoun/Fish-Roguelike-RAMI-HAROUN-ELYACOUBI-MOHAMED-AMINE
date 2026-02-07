@@ -1,115 +1,520 @@
-// AUDIO INSTRUCTIONS - PLACEHOLDER BEEP SOUNDS
-// These are JavaScript-generated beep sounds using Web Audio API
-// To replace with actual audio files, place .wav or .mp3 files in /sounds/ folder
+// PHASE 4 - PROCEDURAL MUSIC ENGINE
+// Generative ocean-themed music for all game states
 
-class SoundManager {
-    constructor() {
-        this.audioContext = null;
-        this.sounds = {};
-        this.enabled = true;
-        this.volume = 0.3;
+class MusicGenerator {
+    constructor(masterVolume) {
+        this.masterVolume = masterVolume || 0.3;
+        this.currentMusic = null;
+        this.musicType = null;
+        this.oscillators = [];
+        this.sequences = [];
+        this.initialized = false;
+    }
 
-        // Try to initialize Web Audio API
+    init() {
+        this.initialized = true;
+    }
+
+    stopMusic() {
         try {
-            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            console.log('✅ Audio system initialized with Web Audio API');
+            // Clear all sequences
+            for (let seq of this.sequences) {
+                clearInterval(seq);
+            }
+            this.sequences = [];
+
+            // Stop all oscillators
+            for (let osc of this.oscillators) {
+                osc.amp(0, 0.5);
+                setTimeout(() => {
+                    try {
+                        osc.stop();
+                    } catch (e) { }
+                }, 600);
+            }
+            this.oscillators = [];
+            this.musicType = null;
         } catch (e) {
-            console.warn('⚠️ Web Audio API not available, using console placeholders');
+            console.warn('⚠️ Error stopping music:', e);
         }
     }
 
-    playBeep(frequency, duration, volume = 0.3) {
-        if (!this.enabled || !this.audioContext) return;
+    playMenuMusic() {
+        if (this.musicType === 'menu') return;
 
-        const oscillator = this.audioContext.createOscillator();
-        const gainNode = this.audioContext.createGain();
+        this.stopMusic();
+        this.musicType = 'menu';
 
-        oscillator.connect(gainNode);
-        gainNode.connect(this.audioContext.destination);
+        try {
+            // "Tidal Lullaby" - C Major (joyful)
+            const scale = [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88]; // C4, D4, E4, F4, G4, A4, B4
+            const bassDrone = [130.81]; // C3
 
-        oscillator.frequency.value = frequency;
-        oscillator.type = 'square';
+            // Bass drone
+            let bass = new p5.Oscillator('sine');
+            bass.freq(bassDrone[0]);
+            bass.amp(0);
+            bass.start();
+            bass.amp(0.06 * this.masterVolume, 2);
+            this.oscillators.push(bass);
 
-        gainNode.gain.setValueAtTime(volume * this.volume, this.audioContext.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + duration);
+            // Joyful ascending melody
+            let melodyIndex = 0;
+            const melodyPattern = [0, 2, 4, 2, 4, 5, 4, 2, 0, 4, 6, 4]; // Uplifting pattern
 
-        oscillator.start(this.audioContext.currentTime);
-        oscillator.stop(this.audioContext.currentTime + duration);
+            let melodySeq = setInterval(() => {
+                try {
+                    let note = scale[melodyPattern[melodyIndex % melodyPattern.length]];
+                    let osc = new p5.Oscillator('sine');
+                    osc.freq(note);
+                    osc.amp(0);
+                    osc.start();
+                    osc.amp(0.06 * this.masterVolume, 0.1);
+                    osc.amp(0, 1.5);
+
+                    setTimeout(() => {
+                        try {
+                            osc.stop();
+                        } catch (e) { }
+                    }, 1600);
+
+                    melodyIndex++;
+                } catch (e) { }
+            }, 1000); // Slow tempo (60 BPM)
+
+            this.sequences.push(melodySeq);
+        } catch (e) {
+            console.warn('⚠️ Error playing menu music:', e);
+        }
+    }
+
+    playGameplayMusic() {
+        if (this.musicType === 'gameplay') return;
+
+        this.stopMusic();
+        this.musicType = 'gameplay';
+
+        try {
+            // "Deep Blue Exploration" - D Major (joyful exploration)
+            const scale = [293.66, 329.63, 369.99, 392.00, 440.00, 493.88]; // D4, E4, F#4, G4, A4, B4
+            const bass = [146.83]; // D3
+
+            // Bass pulse
+            let bassOsc = new p5.Oscillator('triangle');
+            bassOsc.freq(bass[0]);
+            bassOsc.amp(0);
+            bassOsc.start();
+            bassOsc.amp(0.10 * this.masterVolume, 2);
+            this.oscillators.push(bassOsc);
+
+            // Flowing joyful melody
+            let melodyIndex = 0;
+            const melodyPattern = [0, 2, 4, 2, 5, 4, 2, 0, 3, 4, 5, 4, 2];
+
+            let melodySeq = setInterval(() => {
+                try {
+                    let note = scale[melodyPattern[melodyIndex % melodyPattern.length]];
+                    let osc = new p5.Oscillator('sine');
+                    osc.freq(note);
+                    osc.amp(0);
+                    osc.start();
+                    osc.amp(0.07 * this.masterVolume, 0.05);
+                    osc.amp(0, 0.6);
+
+                    setTimeout(() => {
+                        try {
+                            osc.stop();
+                        } catch (e) { }
+                    }, 700);
+
+                    melodyIndex++;
+                } catch (e) { }
+            }, 750); // Medium tempo (80 BPM)
+
+            this.sequences.push(melodySeq);
+
+            // Harmony layer
+            let harmonyIndex = 0;
+            const harmonyPattern = [0, 3, 1, 4];
+
+            let harmonySeq = setInterval(() => {
+                try {
+                    let note = scale[harmonyPattern[harmonyIndex % harmonyPattern.length]] * 0.5;
+                    let osc = new p5.Oscillator('triangle');
+                    osc.freq(note);
+                    osc.amp(0);
+                    osc.start();
+                    osc.amp(0.04 * this.masterVolume, 0.1);
+                    osc.amp(0, 1.4);
+
+                    setTimeout(() => {
+                        try {
+                            osc.stop();
+                        } catch (e) { }
+                    }, 1500);
+
+                    harmonyIndex++;
+                } catch (e) { }
+            }, 1500);
+
+            this.sequences.push(harmonySeq);
+        } catch (e) {
+            console.warn('⚠️ Error playing gameplay music:', e);
+        }
+    }
+
+    playBossMusic() {
+        if (this.musicType === 'boss') return;
+
+        this.stopMusic();
+        this.musicType = 'boss';
+
+        try {
+            // "Leviathan's Wrath" - Dissonant and menacing
+            const scale = [155.56, 164.81, 185.00, 207.65, 233.08]; // Eb3, E3, F#3, G#3, Bb3 (diminished)
+
+            // Menacing melody with wider intervals
+            let melodyIndex = 0;
+            const melodyPattern = [0, 4, 1, 3, 0, 2, 4, 1, 0]; // Dissonant jumps
+
+            let melodySeq = setInterval(() => {
+                try {
+                    let note = scale[melodyPattern[melodyIndex % melodyPattern.length]] * 2;
+                    let osc = new p5.Oscillator('sawtooth'); // Sawtooth for more aggressive sound
+                    osc.freq(note);
+                    osc.amp(0);
+                    osc.start();
+                    osc.amp(0.12 * this.masterVolume, 0.01); // Quick attack for intensity
+                    osc.amp(0, 0.3);
+
+                    setTimeout(() => {
+                        try {
+                            osc.stop();
+                        } catch (e) { }
+                    }, 450);
+
+                    melodyIndex++;
+                } catch (e) { }
+            }, 400); // Faster tempo (150 BPM) for more tension
+
+            this.sequences.push(melodySeq);
+        } catch (e) {
+            console.warn('⚠️ Error playing boss music:', e);
+        }
+    }
+
+    playVictoryMusic() {
+        this.stopMusic();
+        this.musicType = 'victory';
+
+        try {
+            // "Surface Triumph" - C Major arpeggio
+            const notes = [261.63, 329.63, 392.00, 523.25, 659.25, 783.99, 1046.50];
+
+            notes.forEach((freq, i) => {
+                setTimeout(() => {
+                    try {
+                        let osc = new p5.Oscillator('triangle');
+                        osc.freq(freq);
+                        osc.amp(0);
+                        osc.start();
+
+                        let duration = i === notes.length - 1 ? 0.8 : 0.3;
+                        osc.amp(0.15 * this.masterVolume, 0.05);
+                        osc.amp(0, duration);
+
+                        setTimeout(() => {
+                            try {
+                                osc.stop();
+                            } catch (e) { }
+                        }, (duration + 0.1) * 1000);
+                    } catch (e) { }
+                }, i * 200);
+            });
+
+
+        } catch (e) {
+            console.warn('⚠️ Error playing victory music:', e);
+        }
+    }
+
+    addBubbleNote() {
+        if (this.musicType !== 'gameplay') return;
+
+        try {
+            // Musical bubble sound in scale
+            const bubbleNotes = [440, 523.25, 659.25, 783.99]; // A4, C5, E5, G5
+            let note = bubbleNotes[Math.floor(Math.random() * bubbleNotes.length)];
+
+            let osc = new p5.Oscillator('sine');
+            osc.freq(note);
+            osc.amp(0);
+            osc.start();
+            osc.amp(0.05 * this.masterVolume, 0.01);
+            osc.amp(0, 0.15);
+
+            setTimeout(() => {
+                try {
+                    osc.stop();
+                } catch (e) { }
+            }, 200);
+        } catch (e) { }
+    }
+}
+
+// PHASE 3 - PROCEDURAL AUDIO ENGINE (SIMPLIFIED)
+// Using p5.sound oscillators with basic Web Audio API for effects
+
+class SoundManager {
+    constructor() {
+        this.enabled = true;
+        this.masterVolume = 0.3;
+
+        // Ambience
+        this.ambientDrones = [];
+        this.ambienceStarted = false;
+
+        // Music Generator
+        this.musicGenerator = new MusicGenerator(this.masterVolume);
+
+        // Initialize after user interaction
+        this.initialized = false;
+    }
+
+    init() {
+        if (this.initialized) return;
+
+        try {
+            // Enable audio context on user interaction
+            if (typeof userStartAudio !== 'undefined') {
+                userStartAudio();
+            }
+
+            this.musicGenerator.init();
+
+            this.initialized = true;
+        } catch (e) {
+            console.warn('⚠️ Could not initialize p5.sound:', e);
+        }
+    }
+
+    startAmbience() {
+        // Disabled - using only music generator for ambience
+    }
+
+    stopAmbience() {
+        // Disabled - no ambient drones to stop
     }
 
     playPlayerShoot() {
-        console.log('🔫 Player shoot');
-        this.playBeep(440, 0.1, 0.2); // A4 note, short
+        if (!this.enabled || !this.initialized) return;
+
+        try {
+            let osc = new p5.Oscillator('square');
+            osc.amp(0);
+            osc.freq(440);
+            osc.start();
+
+            osc.amp(0.15 * this.masterVolume, 0.01);
+            osc.amp(0, 0.1);
+
+            setTimeout(() => osc.stop(), 150);
+        } catch (e) {
+            console.warn('⚠️ Error playing shoot sound:', e);
+        }
     }
 
     playEnemyShoot() {
-        console.log('💥 Enemy shoot');
-        this.playBeep(330, 0.1, 0.15); // E4 note, short
+        if (!this.enabled || !this.initialized) return;
+
+        try {
+            let osc = new p5.Oscillator('sawtooth');
+            osc.amp(0);
+            osc.freq(330);
+            osc.start();
+
+            osc.amp(0.12 * this.masterVolume, 0.01);
+            osc.amp(0, 0.08);
+
+            setTimeout(() => osc.stop(), 120);
+        } catch (e) {
+            console.warn('⚠️ Error playing enemy shoot:', e);
+        }
     }
 
     playEnemyHit() {
-        console.log('💢 Enemy hit');
-        this.playBeep(220, 0.05, 0.25); // A3 note, very short
+        if (!this.enabled || !this.initialized) return;
+
+        try {
+            let noise = new p5.Noise('white');
+            noise.amp(0);
+            noise.start();
+
+            noise.amp(0.2 * this.masterVolume, 0.01);
+            noise.amp(0, 0.05);
+
+            setTimeout(() => noise.stop(), 100);
+        } catch (e) {
+            console.warn('⚠️ Error playing hit sound:', e);
+        }
     }
 
     playEnemyDeath(enemyType = 'normal') {
-        console.log(`💀 Enemy ${enemyType} death`);
-        // Descending beep for death
-        this.playBeep(440, 0.05, 0.2);
-        setTimeout(() => this.playBeep(330, 0.05, 0.2), 50);
-        setTimeout(() => this.playBeep(220, 0.1, 0.2), 100);
+        if (!this.enabled || !this.initialized) return;
+
+        try {
+            let osc = new p5.Oscillator('triangle');
+            osc.amp(0);
+            osc.freq(440);
+            osc.start();
+
+            osc.amp(0.18 * this.masterVolume, 0.01);
+            osc.freq(110, 0.3);
+            osc.amp(0, 0.3);
+
+            setTimeout(() => osc.stop(), 350);
+        } catch (e) {
+            console.warn('⚠️ Error playing death sound:', e);
+        }
     }
 
     playBossSpawn() {
-        console.log('👹 BOSS SPAWN!');
-        // Ominous low rumble
-        this.playBeep(110, 0.3, 0.3); // A2 note, long
-        setTimeout(() => this.playBeep(165, 0.3, 0.3), 150); // E3 note
+        if (!this.enabled || !this.initialized) return;
+
+        try {
+            let osc = new p5.Oscillator('sine');
+            osc.amp(0);
+            osc.freq(55);
+            osc.start();
+
+            osc.amp(0.25 * this.masterVolume, 0.1);
+            osc.freq(110, 0.5);
+            osc.amp(0, 0.4);
+
+            setTimeout(() => osc.stop(), 1000);
+        } catch (e) {
+            console.warn('⚠️ Error playing boss spawn:', e);
+        }
     }
 
     playLevelUp() {
-        console.log('⬆️ Level up!');
-        // Ascending victory beeps
-        this.playBeep(523, 0.1, 0.25); // C5
-        setTimeout(() => this.playBeep(659, 0.1, 0.25), 100); // E5  
-        setTimeout(() => this.playBeep(784, 0.2, 0.25), 200); // G5
+        if (!this.enabled || !this.initialized) return;
+
+        try {
+            const notes = [523, 659, 784, 1047]; // C5, E5, G5, C6
+
+            notes.forEach((freq, i) => {
+                setTimeout(() => {
+                    try {
+                        let osc = new p5.Oscillator('sine');
+                        osc.amp(0);
+                        osc.freq(freq);
+                        osc.start();
+
+                        osc.amp(0.2 * this.masterVolume, 0.01);
+                        osc.amp(0, 0.15);
+
+                        setTimeout(() => osc.stop(), 200);
+                    } catch (e) {
+                        console.warn('⚠️ Error in level up note:', e);
+                    }
+                }, i * 100);
+            });
+        } catch (e) {
+            console.warn('⚠️ Error playing level up:', e);
+        }
     }
 
     playVictory() {
-        console.log('🎉 VICTORY!');
-        // Victory fanfare
-        this.playBeep(523, 0.15, 0.3); // C5
-        setTimeout(() => this.playBeep(659, 0.15, 0.3), 150); // E5
-        setTimeout(() => this.playBeep(784, 0.15, 0.3), 300); // G5
-        setTimeout(() => this.playBeep(1047, 0.4, 0.3), 450); // C6 - long
+        if (!this.enabled || !this.initialized) return;
+
+        try {
+            const notes = [523, 659, 784, 1047];
+
+            notes.forEach((freq, i) => {
+                setTimeout(() => {
+                    try {
+                        let osc = new p5.Oscillator('triangle');
+                        osc.amp(0);
+                        osc.freq(freq);
+                        osc.start();
+
+                        let duration = i === notes.length - 1 ? 0.5 : 0.15;
+                        osc.amp(0.25 * this.masterVolume, 0.02);
+                        osc.amp(0, duration);
+
+                        setTimeout(() => osc.stop(), (duration + 0.1) * 1000);
+                    } catch (e) {
+                        console.warn('⚠️ Error in victory note:', e);
+                    }
+                }, i * 150);
+            });
+        } catch (e) {
+            console.warn('⚠️ Error playing victory:', e);
+        }
+    }
+
+    playDash() {
+        if (!this.enabled || !this.initialized) return;
+
+        try {
+            let noise = new p5.Noise('white');
+            noise.amp(0);
+            noise.start();
+
+            noise.amp(0.25 * this.masterVolume, 0.01);
+            noise.amp(0, 0.15);
+
+            setTimeout(() => noise.stop(), 200);
+        } catch (e) {
+            console.warn('⚠️ Error playing dash:', e);
+        }
+    }
+
+    playAOE() {
+        if (!this.enabled || !this.initialized) return;
+
+        try {
+            // Low rumble
+            let osc = new p5.Oscillator('sine');
+            osc.amp(0);
+            osc.freq(100);
+            osc.start();
+
+            osc.amp(0.3 * this.masterVolume, 0.05);
+            osc.freq(50, 0.25);
+            osc.amp(0, 0.2);
+
+            // Noise burst
+            let noise = new p5.Noise('pink');
+            noise.amp(0);
+            noise.start();
+
+            noise.amp(0.2 * this.masterVolume, 0.01);
+            noise.amp(0, 0.15);
+
+            setTimeout(() => {
+                osc.stop();
+                noise.stop();
+            }, 300);
+        } catch (e) {
+            console.warn('⚠️ Error playing AOE:', e);
+        }
     }
 
     setVolume(vol) {
-        this.volume = constrain(vol, 0, 1);
+        this.masterVolume = constrain(vol, 0, 1);
     }
 
     toggle() {
         this.enabled = !this.enabled;
-        console.log(`🔊 Sound ${this.enabled ? 'ON' : 'OFF'}`);
+
+        if (!this.enabled) {
+            this.stopAmbience();
+        } else if (this.initialized) {
+            this.startAmbience();
+        }
+
         return this.enabled;
     }
 }
-
-/*
-TO ADD ACTUAL AUDIO FILES:
-1. Create a /sounds/ folder in your project
-2. Add .wav or .mp3 files:
-   - player_shoot.wav
-   - enemy_shoot.wav
-   - enemy_hit.wav
-   - enemy_death.wav
-   - boss_spawn.wav
-   - level_up.wav
-   - victory.wav
-
-3. Load them in constructor:
-   this.sounds.playerShoot = loadSound('sounds/player_shoot.wav');
-   
-4. Play them:
-   this.sounds.playerShoot.play();
-*/

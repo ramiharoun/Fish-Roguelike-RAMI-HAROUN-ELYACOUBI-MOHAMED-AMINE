@@ -14,6 +14,23 @@ class GameState {
         this.score = 0;
         this.enemiesKilled = 0;
         this.bossesDefeated = 0;
+
+        // Difficulty system
+        this.difficulty = 'MEDIUM'; // Default: EASY, MEDIUM, HARD, PRO
+    }
+
+    getVictoryLevel() {
+        const victoryLevels = {
+            'EASY': 5,
+            'MEDIUM': 10,
+            'HARD': 15,
+            'PRO': 20
+        };
+        return victoryLevels[this.difficulty] || 10;
+    }
+
+    setDifficulty(difficulty) {
+        this.difficulty = difficulty;
     }
 
     setState(newState) {

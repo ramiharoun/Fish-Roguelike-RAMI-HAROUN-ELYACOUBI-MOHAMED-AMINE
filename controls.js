@@ -5,7 +5,8 @@ class Controls {
             down: false,
             left: false,
             right: false,
-            space: false
+            space: false,
+            shift: false
         };
     }
 
@@ -15,6 +16,7 @@ class Controls {
         this.keys.left = keyIsDown(LEFT_ARROW);
         this.keys.right = keyIsDown(RIGHT_ARROW);
         this.keys.space = keyIsDown(32);
+        this.keys.shift = keyIsDown(16);
     }
 
     getMovementForce(magnitude = 1.0) {
@@ -47,5 +49,9 @@ class Controls {
 
     isMoving() {
         return this.keys.up || this.keys.down || this.keys.left || this.keys.right;
+    }
+
+    isDashing() {
+        return this.keys.shift;
     }
 }

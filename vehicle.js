@@ -43,9 +43,45 @@ class Vehicle {
     wanderPoint.add(this.pos);
 
     let wanderRadius = 50;
+
+    // Debug visualization
+    if (Vehicle.debug) {
+      push();
+      // Point devant (rouge)
+      fill(255, 0, 0);
+      noStroke();
+      circle(wanderPoint.x, wanderPoint.y, 8);
+
+      // Cercle de wander
+      noFill();
+      stroke(255);
+      strokeWeight(1);
+      circle(wanderPoint.x, wanderPoint.y, wanderRadius * 2);
+
+      // Ligne vers le point
+      stroke(255, 255, 255, 80);
+      strokeWeight(2);
+      line(this.pos.x, this.pos.y, wanderPoint.x, wanderPoint.y);
+      pop();
+    }
+
     let theta = random(TWO_PI);
     let wanderOffset = createVector(wanderRadius * cos(theta), wanderRadius * sin(theta));
     wanderPoint.add(wanderOffset);
+
+    // Debug: point sur le cercle (vert)
+    if (Vehicle.debug) {
+      push();
+      fill(0, 255, 0);
+      noStroke();
+      circle(wanderPoint.x, wanderPoint.y, 12);
+
+      // Ligne vers le point vert
+      stroke(255, 255, 0);
+      strokeWeight(1);
+      line(this.pos.x, this.pos.y, wanderPoint.x, wanderPoint.y);
+      pop();
+    }
 
     return this.seek(wanderPoint);
   }

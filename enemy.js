@@ -68,9 +68,18 @@ class Enemy extends Vehicle {
         }
     }
 
+    shouldPursue(player) {
+        return p5.Vector.dist(this.pos, player.pos) < 800;
+    }
+
     behave(player) {
-        let pursueForce = this.pursue(player);
-        this.applyForce(pursueForce);
+        if (this.shouldPursue(player)) {
+            let pursueForce = this.pursue(player);
+            this.applyForce(pursueForce);
+        } else {
+            let wanderForce = this.wander();
+            this.applyForce(wanderForce);
+        }
     }
 
     getRoleIcon() {
@@ -113,6 +122,27 @@ class Enemy extends Vehicle {
         stroke(0, 0, 0, 150);
         text(this.getRoleIcon(), 0, -this.r - 25);
         pop();
+
+        // Debug visualization
+        if (Vehicle.debug) {
+            push();
+            noFill();
+            strokeWeight(1);
+
+            // Detection radius (red)
+            stroke(255, 0, 0, 100);
+            circle(this.pos.x, this.pos.y, this.detectionRadius * 2);
+
+            // Attack range (green)
+            stroke(0, 255, 0, 100);
+            circle(this.pos.x, this.pos.y, this.attackRange * 2);
+
+            // Hitbox (yellow)
+            stroke(255, 255, 0, 150);
+            circle(this.pos.x, this.pos.y, this.r * 2);
+
+            pop();
+        }
     }
 }
 
@@ -137,6 +167,10 @@ class AggressiveFish extends Enemy {
     }
 
     behave(player) {
+        if (!this.shouldPursue(player)) {
+            this.applyForce(this.wander());
+            return;
+        }
         let pursueForce = this.pursue(player);
         pursueForce.mult(1.2);
         this.applyForce(pursueForce);
@@ -198,9 +232,11 @@ class FastFish extends Enemy {
             let target = p5.Vector.add(player.pos, offset);
             let seekForce = this.seek(target);
             this.applyForce(seekForce);
-        } else {
+        } else if (this.shouldPursue(player)) {
             let pursueForce = this.pursue(player);
             this.applyForce(pursueForce);
+        } else {
+            this.applyForce(this.wander());
         }
     }
 
@@ -251,8 +287,12 @@ class HeavyFish extends Enemy {
     }
 
     behave(player) {
-        let pursueForce = this.pursue(player);
-        this.applyForce(pursueForce);
+        if (this.shouldPursue(player)) {
+            let pursueForce = this.pursue(player);
+            this.applyForce(pursueForce);
+        } else {
+            this.applyForce(this.wander());
+        }
     }
 
     getRoleIcon() {
@@ -304,9 +344,11 @@ class Jellyfish extends Enemy {
     }
 
     behave(player) {
-        let pursueForce = this.pursue(player);
-        pursueForce.mult(0.3);
-        this.applyForce(pursueForce);
+        if (this.shouldPursue(player)) {
+            let pursueForce = this.pursue(player);
+            pursueForce.mult(0.3);
+            this.applyForce(pursueForce);
+        }
 
         let wanderForce = this.wander();
         wanderForce.mult(0.7);
@@ -385,8 +427,12 @@ class Eel extends Enemy {
 
             setTimeout(() => { this.isDashing = false; }, 500);
         } else if (!this.isDashing) {
-            let pursueForce = this.pursue(player);
-            this.applyForce(pursueForce);
+            if (this.shouldPursue(player)) {
+                let pursueForce = this.pursue(player);
+                this.applyForce(pursueForce);
+            } else {
+                this.applyForce(this.wander());
+            }
         }
     }
 
@@ -462,8 +508,12 @@ class EliteFish extends Enemy {
                 this.applyForce(seekForce);
             }
         } else {
-            let pursueForce = this.pursue(player);
-            this.applyForce(pursueForce);
+            if (this.shouldPursue(player)) {
+                let pursueForce = this.pursue(player);
+                this.applyForce(pursueForce);
+            } else {
+                this.applyForce(this.wander());
+            }
         }
     }
 

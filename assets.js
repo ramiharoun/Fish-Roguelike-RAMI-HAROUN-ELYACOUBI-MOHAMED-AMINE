@@ -52,36 +52,42 @@ function drawPlayerSprite(g) {
     let w = g.width;
     let h = g.height;
 
-    // Submarine/Fish hybrid design
+    // Hero Fish Design
+    let bodyColor = color(0, 150, 255); // Azure Blue
+    let accentColor = color(255, 200, 50); // Gold/Yellow Accent
 
-    // Propeller
-    g.fill(200);
-    g.rect(5, h / 2 - 8, 5, 16);
-
-    // Tail fins
-    g.fill(255, 100, 0); // Orange accents
-    g.triangle(10, h / 2, 25, h / 2 - 10, 25, h / 2 + 10);
-
-    // Main Body
-    g.fill(255, 255, 0); // Yellow submarine
-    g.ellipse(w / 2 + 5, h / 2, w - 15, h - 15);
-
-    // Cockpit/Window
-    g.fill(200, 240, 255); // Blue glass
-    g.stroke(0, 100, 200);
-    g.strokeWeight(2);
-    g.circle(w / 2 + 15, h / 2 - 5, 12);
-
-    // Reflection
+    // Tail Fin (Dynamic/Flowing)
+    g.fill(accentColor);
     g.noStroke();
-    g.fill(255, 255, 255, 200);
-    g.circle(w / 2 + 17, h / 2 - 7, 4);
+    g.triangle(5, h / 2, 20, h / 2 - 12, 20, h / 2 + 12);
 
-    // Details
+    // Dorsal Fin (Top)
+    g.fill(accentColor);
+    g.triangle(w / 2 - 5, h / 2 - 10, w / 2 + 10, h / 2 - 20, w / 2 + 15, h / 2 - 10);
+
+    // Ventral Fin (Bottom)
+    g.triangle(w / 2 - 5, h / 2 + 10, w / 2 + 10, h / 2 + 20, w / 2 + 15, h / 2 + 10);
+
+    // Main Body (Streamlined)
+    g.fill(bodyColor);
+    g.ellipse(w / 2 + 5, h / 2, w - 15, h - 20);
+
+    // Stripe/Detail
+    g.stroke(accentColor);
+    g.strokeWeight(3);
     g.noFill();
-    g.stroke(200, 100, 0);
-    g.strokeWeight(2);
-    g.arc(w / 2, h / 2 + 10, 20, 10, 0, PI);
+    g.arc(w / 2, h / 2, w - 25, h - 30, PI + 0.5, TWO_PI - 0.5); // Side stripe
+
+    // Eye (Large/Expressive)
+    g.noStroke();
+    g.fill(255);
+    g.circle(w - 18, h / 2 - 5, 10);
+    g.fill(0);
+    g.circle(w - 16, h / 2 - 5, 4);
+
+    // Glow/Shine (Subtle)
+    g.fill(255, 255, 255, 100);
+    g.ellipse(w / 2 + 10, h / 2 - 5, 15, 6);
 }
 
 function drawFishSprite(g, bodyColor, finColor, isSlender = false, isElite = false) {

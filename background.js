@@ -52,13 +52,17 @@ class OceanBackground {
             });
         }
 
-        // Seabed Generation using noise (pre-calculated for performance)
-        this.seabedPoints = [];
-        let detail = 20; // Points every 20px
-        for (let x = 0; x <= w + 200; x += detail) {
-            // Mix of sine waves for rolling hills
-            let y = h - 150 + sin(x * 0.005) * 50 + sin(x * 0.02) * 20;
-            this.seabedPoints.push({ x: x, y: y });
+        // Initialize Sandy Background Elements
+        this.sandTexture = [];
+        // Generate random sand grains/pebbles
+        for (let i = 0; i < 2000; i++) {
+            this.sandTexture.push({
+                x: random(w),
+                y: random(h),
+                type: random() < 0.9 ? 'grain' : 'pebble',
+                size: random() < 0.9 ? random(1, 3) : random(3, 6),
+                color: color(map(random(), 0, 1, 160, 200), map(random(), 0, 1, 150, 180), map(random(), 0, 1, 100, 140), 150)
+            });
         }
     }
 
@@ -90,31 +94,86 @@ class OceanBackground {
     }
 
     show(camera) {
-        // 1. VIBRANT GRADIENT BACKGROUND
-        // We draw this relative to screen.
-        // We must ensure consistent coloring.
-
-        // Since background() clears canvas, we draw a huge rect in screen space?
-        // No, we can just draw lines on screen.
-
+        // 1. SANDY OCEAN FLOOR (Top-Down)
         push();
-        resetMatrix();
 
-        // Top: Surface Light (Turquoise/Cyan) -> Bottom: Deep Ocean (Dark Navy)
-        let cTop = color(0, 150, 180);    // Bright Turquoise
-        let cMid = color(0, 80, 140);     // Medium Blue
-        let cBot = color(0, 20, 50);      // Deep Navy
+        // A. Base Sand Color
+        background(210, 195, 150); // Light Sand
 
-        // Draw gradient mesh
+        // B. Sand Detail & Ripples
+        // Draw in world space
+        push();
+        translate(-camera.x + width / 2, -camera.y + height / 2); // Apply camera transform manually
+
+        // Sand Ripples (Light bands)
+        noFill();
+        stroke(190, 175, 130, 100); // Slightly darker sand color
+        strokeWeight(2);
+
+        // Draw ripples based on world coordinates
+        // We can use a loop or noise, let's use sine waves for simple ripples
+        let rippleSpacing = 40;
+        let visibleWorldLeft = camera.x - width / 2 - 100;
+        let visibleWorldRight = camera.x + width / 2 + 100;
+        let visibleWorldTop = camera.y - height / 2 - 100;
+        let visibleWorldBottom = camera.y + height / 2 + 100;
+
+        // Align to grid to avoid jitter
+        let startX = Math.floor(visibleWorldLeft / rippleSpacing) * rippleSpacing;
+
+        // Simulating sand ripples
+        /*
+        for (let x = startX; x < visibleWorldRight; x += rippleSpacing) {
+           // Draw vertical-ish wavy lines
+           beginShape();
+           for (let y = visibleWorldTop; y < visibleWorldBottom; y += 50) {
+               let xOffset = sin(y * 0.01 + x * 0.005) * 20;
+               vertex(x + xOffset, y);
+           }
+           endShape();
+        } 
+        */
+        // Let's try drawing horizontal bands of differing brightness to simulate dunes/ripples
         noStroke();
-        beginShape(QUADS);
-        // Top section
-        fill(cTop); vertex(0, 0); vertex(width, 0);
-        fill(cMid); vertex(width, height * 0.6); vertex(0, height * 0.6);
-        // Bottom section
-        fill(cMid); vertex(0, height * 0.6); vertex(width, height * 0.6);
-        fill(cBot); vertex(width, height); vertex(0, height);
-        endShape();
+        for (let y = Math.floor(visibleWorldTop / 50) * 50; y < visibleWorldBottom; y += 50) {
+            fill(200, 185, 140, 80); // Shadow/Darker band
+            // Wavy band
+            beginShape();
+            vertex(visibleWorldLeft, y);
+            for (let x = visibleWorldLeft; x <= visibleWorldRight; x += 100) {
+                let yOff = sin(x * 0.01 + y * 0.02) * 20;
+                vertex(x, y + yOff);
+            }
+            vertex(visibleWorldRight, y);
+            vertex(visibleWorldRight, y + 25); // Thickness
+            for (let x = visibleWorldRight; x >= visibleWorldLeft; x -= 100) {
+                let yOff = sin(x * 0.01 + y * 0.02) * 20;
+                vertex(x, y + yOff + 25);
+            }
+            endShape(CLOSE);
+        }
+
+        noStroke();
+        for (let t of this.sandTexture) {
+            // Optimization: Simple cull
+            if (t.x > camera.x - width / 2 - 50 && t.x < camera.x + width / 2 + 50 &&
+                t.y > camera.y - height / 2 - 50 && t.y < camera.y + height / 2 + 50) {
+                fill(t.color);
+                if (t.type === 'grain') {
+                    rect(t.x, t.y, t.size, t.size);
+                } else {
+                    ellipse(t.x, t.y, t.size, t.size);
+                }
+            }
+        }
+        pop();
+
+        // C. Blue Water Filter (Stronger)
+        // Darker blue, higher opacity
+        fill(0, 80, 180, 100); // Stronger Blue Tint
+        noStroke();
+        rect(0, 0, width, height);
+
         pop();
 
         push();
@@ -186,37 +245,9 @@ class OceanBackground {
         // 5. SEABED (World Space - Foreground)
         // Only draw if within view
         if (camera.y + height > this.height - 300) {
-            push();
-            camera.apply(); // Use actual camera transform
-
-            // Sand Color
-            fill(194, 178, 128); // Sand
-            noStroke();
-
-            beginShape();
-            vertex(0, this.height); // Bottom Left (World Coords)
-
-            // Draw generated terrain
-            for (let p of this.seabedPoints) {
-                // p.x is world x.
-                // We only need to draw points near camera?
-                // For now draw all is fine for 3000px width.
-                vertex(p.x, p.y);
-            }
-
-            vertex(this.width, this.height); // Bottom Right
-            endShape(CLOSE);
-
-            // Add texture/stones on seabed
-            fill(160, 150, 110);
-            for (let i = 0; i < this.seabedPoints.length; i += 5) {
-                let p = this.seabedPoints[i];
-                // Simple scattering
-                if ((p.x * 123 + p.y) % 10 < 3) {
-                    ellipse(p.x, p.y + 10, 10, 6);
-                }
-            }
-
+            // 5. SEABED REMOVED
+            // For top-down deep ocean, we don't see the floor unless shallow.
+            // Assuming deep ocean for now.
             pop();
         }
     }

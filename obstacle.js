@@ -129,21 +129,41 @@ class Obstacle {
     checkCollision(entity) {
         let d = p5.Vector.dist(this.pos, entity.pos);
 
-        if (this.type === 'seaweed') {
-            // Slow down effect
+        if (this.type === 'seaweed' || this.type === 'coral') {
+            // Slow down effect for plants (Seaweed and Coral/Flowers)
             if (d < this.r && entity.vel) {
                 entity.vel.mult(0.95); // Drag effect
                 return false; // No physical collision
             }
         } else {
-            // Solid collision
-            if (d < this.r * 0.8 + entity.r) { // Tighter collision box for rocks
+            // Solid collision for rocks/coral
+            if (d < this.r * 0.8 + entity.r) {
                 let repulsion = p5.Vector.sub(entity.pos, this.pos);
                 repulsion.normalize();
-                repulsion.mult(2);
+
+                // Stronger repulsion to prevent sticking
+                // Push out to edge + buffer
+                let overlap = (this.r * 0.8 + entity.r) - d;
+                repulsion.mult(overlap + 2);
                 entity.pos.add(repulsion);
+
+                // Kill velocity colliding into it
+                if (entity.vel) {
+                    entity.vel.mult(0.5);
+                }
                 return true;
             }
+        }
+        return false;
+    }
+
+    checkProjectileCollision(proj) {
+        // Projectiles only hit solid rocks, ignore seaweed and coral
+        if (this.type === 'seaweed' || this.type === 'coral') return false;
+
+        let d = p5.Vector.dist(this.pos, proj.pos);
+        if (d < this.r * 0.7 + proj.r) {
+            return true;
         }
         return false;
     }
@@ -187,10 +207,53 @@ class ObstacleManager {
         }
     }
 
-    update(player) {
+    update(player, enemies, projectiles, enemyProjectiles) {
         // Check collisions with player
         for (let obs of this.obstacles) {
             obs.checkCollision(player);
+        }
+
+        // Check collisions with enemies
+        if (enemies) {
+            for (let enemy of enemies) {
+                for (let obs of this.obstacles) {
+                    obs.checkCollision(enemy);
+                }
+            }
+        }
+
+        // Check collisions with player projectiles
+        if (projectiles) {
+            for (let i = projectiles.length - 1; i >= 0; i--) {
+                let proj = projectiles[i];
+                let hit = false;
+                for (let obs of this.obstacles) {
+                    if (obs.checkProjectileCollision(proj)) {
+                        hit = true;
+                        break;
+                    }
+                }
+                if (hit) {
+                    projectiles.splice(i, 1);
+                }
+            }
+        }
+
+        // Check collisions with enemy projectiles
+        if (enemyProjectiles) {
+            for (let i = enemyProjectiles.length - 1; i >= 0; i--) {
+                let proj = enemyProjectiles[i];
+                let hit = false;
+                for (let obs of this.obstacles) {
+                    if (obs.checkProjectileCollision(proj)) {
+                        hit = true;
+                        break;
+                    }
+                }
+                if (hit) {
+                    enemyProjectiles.splice(i, 1);
+                }
+            }
         }
     }
 

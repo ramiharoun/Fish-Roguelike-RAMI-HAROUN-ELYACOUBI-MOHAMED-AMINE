@@ -13,7 +13,11 @@ class Player extends Vehicle {
         this.fireRate = 2.0;
         this.lastShotTime = 0;
 
-        this.maxSpeed = 5;
+        this.fireRate = 2.0;
+        this.lastShotTime = 0;
+
+        this.baseSpeed = 5;
+        this.maxSpeed = this.baseSpeed;
         this.maxForce = 0.3;
         this.r = 20;
 
@@ -28,8 +32,14 @@ class Player extends Vehicle {
         this.hasAOE = false;
         this.aoeCooldown = 8000; // 8 seconds
         this.lastAOETime = 0;
-        this.aoeRadius = 150;
-        this.aoeDamage = 50;
+        this.aoeRadius = 200; // Increased range
+        this.aoeDamage = 300; // Massive damage buff (was 50)
+
+        // Dash properties
+        this.dashCooldown = 5000; // 5 seconds
+        this.lastDashTime = -5000; // Ready immediately
+        this.dashForce = 20;
+        this.dashDuration = 250; // ms to keep high speed
     }
 
     takeDamage(amount) {
@@ -66,12 +76,26 @@ class Player extends Vehicle {
         // Example: Level 1→2: 18 XP, Level 5→6: 58 XP, Level 10→11: 106 XP
         this.xpToNextLevel = 10 + this.level * 8 + Math.floor(Math.log(this.level + 1) * 15);
 
-        // Unlock AOE at level 10
-        if (this.level === 10 && !this.hasAOE) {
+        // Unlock AOE at level 5
+        if (this.level === 5 && !this.hasAOE) {
             this.hasAOE = true;
+            if (typeof ui !== 'undefined') {
+                ui.addMessage("AOE ABILITY UNLOCKED! Press Q", color(255, 200, 0));
+            }
         }
 
         return true;
+    }
+
+    update() {
+        // Handle Dash Speed Boost
+        if (millis() - this.lastDashTime < this.dashDuration) {
+            this.maxSpeed = this.baseSpeed * 4; // Allow high speed during dash
+        } else {
+            this.maxSpeed = this.baseSpeed;
+        }
+
+        super.update();
     }
 
     canUseAOE() {
@@ -104,6 +128,36 @@ class Player extends Vehicle {
         return true;
     }
 
+    canDash() {
+        return millis() - this.lastDashTime > this.dashCooldown;
+    }
+
+    dash() {
+        if (!this.canDash()) return false;
+
+        this.lastDashTime = millis();
+
+        // Dash in direction of movement or facing
+        let dashDir = this.vel.copy();
+        if (dashDir.mag() === 0) {
+            dashDir = p5.Vector.fromAngle(this.heading || 0);
+        }
+        dashDir.normalize();
+        dashDir.mult(this.dashForce);
+        this.applyForce(dashDir);
+
+        // Sound effect
+        if (typeof soundManager !== 'undefined' && soundManager.playDash) {
+            soundManager.playDash();
+        }
+
+        // Invulnerability during dash? Maybe short duration
+        // this.invulnerableTime = millis(); 
+        // this.invulnerableDuration = 200; // Short i-frame?
+
+        return true;
+    }
+
     applyUpgrade(upgradeType) {
         switch (upgradeType) {
             case 'maxHP':
@@ -117,7 +171,7 @@ class Player extends Vehicle {
                 this.damage += 8; // Increased from 5 to 8
                 break;
             case 'speed':
-                this.maxSpeed += 0.5; // New upgrade option
+                this.baseSpeed += 0.5; // New upgrade option
                 break;
             case 'regen':
                 this.hpRegen += 0.5; // +0.5 HP/s per upgrade
@@ -142,6 +196,10 @@ class Player extends Vehicle {
 
             if (typeof soundManager !== 'undefined') {
                 soundManager.playPlayerShoot();
+                // Add musical bubble note during gameplay
+                if (soundManager.musicGenerator) {
+                    soundManager.musicGenerator.addBubbleNote();
+                }
             }
 
             this.lastShotTime = currentTime;
@@ -149,7 +207,6 @@ class Player extends Vehicle {
     }
 
     die() {
-        console.log('Player died!');
     }
 
     isDead() {
@@ -169,28 +226,42 @@ class Player extends Vehicle {
 
         if (this.isInvulnerable() && Math.floor(millis() / 100) % 2 === 0) {
             tint(255, 100);
+        } else {
+            noTint();
         }
 
-        fill(100, 100, 200);
-        stroke(50, 50, 150);
-        strokeWeight(2);
-
-        triangle(
-            this.r * 1.5, 0,
-            -this.r, -this.r * 0.8,
-            -this.r, this.r * 0.8
-        );
-
-        fill(80, 80, 180);
-        triangle(-this.r, -this.r * 0.5, -this.r * 1.3, -this.r * 1.2, -this.r * 0.7, -this.r * 0.3);
-        triangle(-this.r, this.r * 0.5, -this.r * 1.3, this.r * 1.2, -this.r * 0.7, this.r * 0.3);
-
-        fill(255);
-        ellipse(this.r * 0.3, -this.r * 0.3, this.r * 0.3, this.r * 0.3);
-        fill(0);
-        ellipse(this.r * 0.3, -this.r * 0.3, this.r * 0.15, this.r * 0.15);
+        // Draw the player sprite
+        // Sprite is 64x48. We should scale it to match player size (r=20 -> diameter 40).
+        // Let's keep aspect ratio somewhat.
+        imageMode(CENTER);
+        if (typeof playerSprite !== 'undefined') {
+            image(playerSprite, 0, 0, this.r * 2.5, this.r * 2);
+        } else {
+            // Fallback if sprite not loaded
+            fill(0, 150, 255);
+            ellipse(0, 0, this.r * 2, this.r * 1.5);
+        }
 
         pop();
+
+        // Debug visualization
+        if (Vehicle.debug) {
+            push();
+            noFill();
+            strokeWeight(1);
+
+            // AOE radius (cyan)
+            if (this.hasAOE) {
+                stroke(0, 255, 255, 100);
+                circle(this.pos.x, this.pos.y, this.aoeRadius * 2);
+            }
+
+            // Hitbox (white)
+            stroke(255, 255, 255, 150);
+            circle(this.pos.x, this.pos.y, this.r * 2);
+
+            pop();
+        }
     }
 
     edges() {

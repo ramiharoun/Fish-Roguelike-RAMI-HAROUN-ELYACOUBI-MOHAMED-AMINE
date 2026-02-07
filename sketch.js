@@ -34,6 +34,9 @@ let bossMode = false;
 let bossWarningTime = 0;
 let dangerParticles = [];
 
+// Debug mode
+let debugMode = false;
+
 // Assets
 let bossSprite;
 let playerSprite; // New procedural player sprite
@@ -85,6 +88,10 @@ function draw() {
   background(0, 50, 100);
 
   if (gameState.isMenu()) {
+    // Start menu music if not already playing
+    if (soundManager && soundManager.musicGenerator && soundManager.musicGenerator.musicType !== 'menu') {
+      soundManager.musicGenerator.playMenuMusic();
+    }
     ui.drawMenu();
   } else if (gameState.isPlaying()) {
     updateGame();
@@ -106,13 +113,17 @@ function draw() {
 
 function updateGame() {
   controls.update();
-  obstacleManager.update(player);
+  obstacleManager.update(player, enemies, projectiles, enemyProjectiles);
 
   let movementForce = controls.getMovementForce(player.maxForce);
   player.applyForce(movementForce);
 
   if (controls.isShooting()) {
     player.shoot(projectiles);
+  }
+
+  if (controls.isDashing()) {
+    player.dash();
   }
 
   player.update();
@@ -135,7 +146,13 @@ function updateGame() {
     bossSpawned = true;
     bossMode = true;
     bossWarningTime = millis();
-    soundManager.playBossSpawn();
+    if (soundManager) {
+      soundManager.playBossSpawn();
+      // Start boss music
+      if (soundManager.musicGenerator) {
+        soundManager.musicGenerator.playBossMusic();
+      }
+    }
   }
 
   // Exit boss mode when all bosses are defeated
@@ -183,10 +200,24 @@ function updateGame() {
       if (enemy instanceof Boss) {
         gameState.bossDefeated();
         bossSpawned = false;
-        // Victory condition: reach level 20
-        if (player.level === 20) {
+
+        // Victory condition: check if the boss that was spawned matches victory level
+        // Use lastBossLevel which stores the level when boss spawned
+        let isFinalBoss = (lastBossLevel >= gameState.getVictoryLevel());
+
+        if (isFinalBoss) {
           gameState.setState(GameState.STATES.VICTORY);
-          soundManager.playVictory();
+          if (soundManager) {
+            soundManager.playVictory();
+            if (soundManager.musicGenerator) {
+              soundManager.musicGenerator.playVictoryMusic();
+            }
+          }
+        } else {
+          // Boss defeated but not final boss - restart normal gameplay music
+          if (soundManager && soundManager.musicGenerator) {
+            soundManager.musicGenerator.playGameplayMusic();
+          }
         }
       } else {
         gameState.enemyKilled();
@@ -262,7 +293,10 @@ function updateGame() {
   }
 
   if (player.level > previousLevel) {
-    gameState.setState(GameState.STATES.LEVELUP);
+    // Level up - but skip if we're already in victory state
+    if (!gameState.isVictory()) {
+      gameState.setState(GameState.STATES.LEVELUP);
+    }
     previousLevel = player.level;
     soundManager.playLevelUp();
   }
@@ -295,7 +329,7 @@ function renderGame() {
     obstacleManager.show();
   }
 
-  drawWaves();
+
 
   updateBubbles();
 
@@ -334,42 +368,7 @@ function renderGame() {
   drawBossWarning();
 }
 
-function drawOceanBackground() {
-  let color1, color2;
 
-  if (bossMode) {
-    // Dark, ominous colors for boss fight
-    color1 = color(20, 10, 30); // Very dark purple
-    color2 = color(50, 20, 40); // Dark purple
-  } else {
-    // Normal ocean colors
-    color1 = color(0, 50, 100);
-    color2 = color(30, 100, 150);
-  }
-
-  for (let y = 0; y < height; y++) {
-    let inter = map(y, 0, height, 0, 1);
-    let c = lerpColor(color1, color2, inter);
-    stroke(c);
-    line(0, y, width, y);
-  }
-}
-
-function drawWaves() {
-  noFill();
-  waveOffset += 0.02;
-
-  for (let i = 0; i < 3; i++) {
-    stroke(50, 120, 180, 50);
-    strokeWeight(2);
-    beginShape();
-    for (let x = camera.x - width / 2 - 100; x < camera.x + width / 2 + 100; x += 10) {
-      let y = sin(x * 0.01 + waveOffset + i) * 30 + (i * 100);
-      vertex(x, y);
-    }
-    endShape();
-  }
-}
 
 function updateBubbles() {
   for (let bubble of bubbles) {
@@ -395,9 +394,19 @@ function updateBubbles() {
 }
 
 function mousePressed() {
+  // Initialize sound on first interaction
+  if (soundManager && !soundManager.initialized) {
+    soundManager.init();
+  }
+
   if (gameState.isMenu()) {
     if (ui.checkMenuClick(mouseX, mouseY)) {
       startNewGame();
+    }
+  } else if (gameState.isPaused()) {
+    // Check if resume button clicked
+    if (ui.checkPauseClick(mouseX, mouseY)) {
+      gameState.setState(GameState.STATES.PLAYING);
     }
   } else if (gameState.isLevelUp()) {
     let upgrade = ui.checkUpgradeClick(mouseX, mouseY);
@@ -418,14 +427,11 @@ function mousePressed() {
       gameState.reset();
     }
   } else if (gameState.isVictory()) {
-    // Check restart button
-    if (mouseX > width / 2 - 100 && mouseX < width / 2 + 100 &&
-      mouseY > height / 2 + 170 && mouseY < height / 2 + 220) {
+    // Check victory screen buttons
+    let action = ui.checkVictoryClick(mouseX, mouseY);
+    if (action === 'restart') {
       startNewGame();
-    }
-    // Check home button
-    if (mouseX > width / 2 - 100 && mouseX < width / 2 + 100 &&
-      mouseY > height / 2 + 230 && mouseY < height / 2 + 280) {
+    } else if (action === 'home') {
       gameState.reset();
     }
   } else if (gameState.isPlaying()) {
@@ -452,14 +458,17 @@ function mousePressed() {
 function keyPressed() {
   if (key === 'd' || key === 'D') {
     Vehicle.debug = !Vehicle.debug;
+    debugMode = !debugMode;
   }
 
-  if (key === 'p' || key === 'P') {
+  // Pause with ESC key
+  if (keyCode === ESCAPE) {
     if (gameState.isPlaying()) {
       gameState.setState(GameState.STATES.PAUSED);
     } else if (gameState.isPaused()) {
       gameState.setState(GameState.STATES.PLAYING);
     }
+    return false; // Prevent default ESC behavior
   }
 
   // AOE attack (Q key)
@@ -472,6 +481,16 @@ function keyPressed() {
 
 function startNewGame() {
   gameState.startGame();
+
+  // Initialize and start ambience
+  if (soundManager) {
+    soundManager.init();
+    soundManager.startAmbience();
+    // Start gameplay music
+    if (soundManager.musicGenerator) {
+      soundManager.musicGenerator.playGameplayMusic();
+    }
+  }
 
   player = new Player(worldWidth / 2, worldHeight / 2);
   enemies = [];
